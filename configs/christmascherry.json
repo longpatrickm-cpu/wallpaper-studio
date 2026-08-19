@@ -1,0 +1,66 @@
+{
+  "name": "christmascherry \u2014 the Jazz canon",
+  "marks_dir": "../ninetiesglyphs/marks-jazz",
+  "out": "out/christmascherry.svg",
+  "id_prefix": "ccw-m",
+  "class": "cc-wall-svg",
+  "seed": 1994,
+  "register": "bold",
+  "grid": {
+    "cell": 58,
+    "cols": 20,
+    "rows": 20,
+    "mark": 40
+  },
+  "jitter": {
+    "px": 9,
+    "rotate": [
+      -24,
+      24
+    ],
+    "scale": [
+      0.75,
+      1.25
+    ],
+    "opacity": [
+      0.9,
+      1.0
+    ]
+  },
+  "palette": {
+    "ink": "#1A1A2E",
+    "accent": "#0FBFB0",
+    "second": "#9B4FA8",
+    "third": "#E0409A",
+    "gravity": "#D03B3B",
+    "highlight": "#F5C518",
+    "ground": "#F6F5F1"
+  },
+  "tints": null,
+  "style": {
+    "stroke_primary": [
+      3.0,
+      5.0
+    ],
+    "stroke_secondary": [
+      2.0,
+      3.0
+    ],
+    "opacity_bands": [
+      [
+        0.6,
+        1.0
+      ],
+      [
+        0.4,
+        0.6
+      ],
+      [
+        0.2,
+        0.4
+      ]
+    ],
+    "fills": "solid",
+    "max_colors_per_mark": 3
+  }
+}

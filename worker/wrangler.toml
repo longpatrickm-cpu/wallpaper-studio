@@ -1,0 +1,10 @@
+name = "wallpaper-studio"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# wrangler kv namespace create RL   → paste the id here
+[[kv_namespaces]]
+binding = "RL"
+id = "REPLACE_ME"
+
+# wrangler secret put ANTHROPIC_API_KEY   (never put the key in this file)

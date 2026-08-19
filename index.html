@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wallpaper Studio — tiling mark-field generator</title>
+<meta name="description" content="Type a subject, judge four prototypes, get a seamless tiling wallpaper of 64 hand-drawn marks. Runs entirely in your browser.">
+<style>
+:root{--ink:#14141a;--ink2:#55555f;--muted:#8a8a94;--hairline:#e2e0d8;--card:#fcfcfa;
+  --paper:#f6f5f1;--cherry:#d03b3b;--jz:#0fbfb0;--yellow:#f5c518;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;padding:0 0 60px}
+header{background:#14141a;color:#f6f5f1;padding:16px 22px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+header b{font-family:var(--mono);font-size:15px;letter-spacing:.06em}
+header span{font-family:var(--mono);font-size:11px;color:#8d8c85;letter-spacing:.14em;text-transform:uppercase}
+header a{margin-left:auto;color:var(--jz);font-family:var(--mono);font-size:11px}
+main{max-width:1080px;margin:0 auto;padding:26px 18px}
+h1{font-size:28px;letter-spacing:-.02em;margin-bottom:2px}
+.sub{font-family:var(--mono);font-size:12px;color:var(--ink2);letter-spacing:.04em;margin-bottom:16px}
+.lede{font-size:17px;line-height:1.62;max-width:64ch;margin-bottom:14px;color:#33333d}
+.fine{font-size:11.5px;color:var(--muted);line-height:1.5}
+.mini{font-family:var(--mono);font-size:10.5px;border:1.5px solid var(--ink);background:var(--card);
+  padding:5px 11px;cursor:pointer}
+.mini:hover{background:var(--ink);color:#fff}
+.note{border-left:4px solid var(--cherry);background:#fff6f6;padding:12px 14px;font-size:13px;
+  line-height:1.6;margin-top:20px}
+.note b{font-weight:600}
+footer{max-width:1080px;margin:30px auto 0;padding:18px;border-top:2px solid var(--ink);
+  font-family:var(--mono);font-size:11px;color:var(--ink2);line-height:1.9}
+footer a{color:var(--cherry)}
+</style>
+</head><body>
+
+<header>
+  <b>WALLPAPER STUDIO</b>
+  <span>tiling mark-field generator</span>
+  <a href="MANUAL.md">read the manual →</a>
+</header>
+
+<main>
+  <h1>Wallpaper Studio</h1>
+  <p class="sub">Seed it · judge four · get sixty-four</p>
+
+  <p class="lede">A canon is not a slot machine. You seed it, you look at a handful and say
+  what is wrong, and only then does it draw the rest — because a wrong register or a dead
+  palette is cheap to fix across four marks and expensive across sixty-four.</p>
+
+  <p class="lede">Claude draws the marks. <b>Everything else happens in this tab</b>: the
+  offset lattice, the per-cell rotation and jitter, the seam wrap that makes it tile
+  forever, the audit, the SVG export.</p>
+
+<ol class="stuSteps" id="stuSteps">
+  <li data-s="1"><b>1</b> Seed &amp; criteria</li>
+  <li data-s="2"><b>2</b> Judge 4</li>
+  <li data-s="3"><b>3</b> Draw 64</li>
+  <li data-s="4" class="ext"><b>4</b> Reseed</li>
+  <li data-s="5" class="ext"><b>5</b> Judge 16 &rarr; 256</li>
+</ol>
+
+<!-- ── STEP 1 ─────────────────────────────────────────────── -->
+<div class="stuStep on" data-step="1">
+  <div class="stuGrid">
+    <div class="stuPanel">
+      <div class="stuRow"><label for="stuSubject">Concept seed</label>
+        <input type="text" id="stuSubject" placeholder="bugs · dinosaurs · flowers · lighthouses" value="bugs"></div>
+      <div class="stuRow"><label for="stuMood">Direction (optional)</label>
+        <textarea id="stuMood" placeholder="victorian specimen cabinet, slightly menacing"></textarea></div>
+      <div class="stuRow"><label for="stuRegister">Register</label>
+        <select id="stuRegister">
+          <option value="ghost">Ghost &mdash; hairline, whisper, background texture</option>
+          <option value="bold" selected>Bold &mdash; thick, filled, reads across the room</option>
+        </select></div>
+      <div class="stuRow"><label>Palette</label><div class="pchips" id="stuPal"></div></div>
+      <div class="stuRow"><label for="stuDensity">Density &mdash; <span id="stuDensityOut">58</span>px cells</label>
+        <input type="range" id="stuDensity" min="34" max="86" value="58"></div>
+      <div class="stuRow"><label for="stuStrength">Strength &mdash; <span id="stuStrengthOut">0.85</span></label>
+        <input type="range" id="stuStrength" min="10" max="100" value="85"></div>
+      <div class="stuRow"><label for="stuKey">Anthropic API key</label>
+        <input type="text" id="stuKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></div>
+      <p class="fine">Stays in this tab. Never stored, never sent anywhere except straight
+      to Anthropic.</p>
+      <button class="stuBtn" id="stuGo1" style="width:100%;margin-top:6px">GENERATE 4 PROTOTYPES</button>
+      <button class="mini" id="stuDemo" style="width:100%;margin-top:8px">or tile a demo canon (no key)</button>
+      <div id="stuMsg1" class="stuMsg"></div>
+    </div>
+    <div>
+      <div id="stuStage"><div id="stuEmpty">nothing yet<br><br>seed a subject on the left,<br>or tile this page's own canon with no key</div></div>
+      <div class="stuBar">
+        <button class="mini" id="stuReseed">reseed layout</button>
+        <button class="mini" id="stuSvg">download .svg</button>
+        <button class="mini" id="stuCss">copy as CSS</button>
+        <span id="stuStats" style="font-family:var(--mono);font-size:10.5px;color:var(--ink2);margin-left:auto"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 2 ─────────────────────────────────────────────── -->
+<div class="stuStep" data-step="2">
+  <p class="lede" style="font-size:16px">Four prototypes. <b>Judge every one</b> &mdash;
+  keep or cut &mdash; and say why. This is the whole point of the step: what you write
+  here is handed to the next round verbatim, and the kept marks are shown to it as the
+  target character.</p>
+  <div id="stuJudge" class="judgeGrid"></div>
+  <div class="stuRow" style="margin-top:14px"><label for="stuNotes">Overall direction for the 64</label>
+    <textarea id="stuNotes" placeholder="more negative space · fewer circles · let some run off the edge · calmer"></textarea></div>
+  <div class="stuBar">
+    <button class="mini" id="stuBack2">&larr; change the seed</button>
+    <button class="stuBtn" id="stuGo2">APPROVE &amp; DRAW 64</button>
+    <span id="stuJudgeCount" style="font-family:var(--mono);font-size:11px;color:var(--ink2)"></span>
+  </div>
+  <div id="stuMsg2" class="stuMsg"></div>
+</div>
+
+<!-- ── STEP 3 ─────────────────────────────────────────────── -->
+<div class="stuStep" data-step="3">
+  <div id="stuStage3"><div id="stuEmpty3">drawing…</div></div>
+  <div class="stuBar">
+    <button class="mini" id="stuReseed3">reseed layout</button>
+    <button class="mini" id="stuSvg3">download .svg</button>
+    <button class="mini" id="stuCss3">copy as CSS</button>
+    <button class="mini" id="stuAudit">audit the canon</button>
+    <span id="stuStats3" style="font-family:var(--mono);font-size:10.5px;color:var(--ink2);margin-left:auto"></span>
+  </div>
+  <div id="stuAuditOut" class="auditBox"></div>
+  <div class="stuBar" style="margin-top:14px">
+    <button class="mini" id="stuBack3">&larr; back to judging</button>
+    <button class="stuBtn" id="stuGo3" style="background:var(--yellow,#F5C518)">EXPAND TO 256 &rarr;</button>
+  </div>
+  <div id="stuSheet3" class="sheetGrid"></div>
+  <div id="stuMsg3" class="stuMsg"></div>
+</div>
+
+<!-- ── STEP 4 ─────────────────────────────────────────────── -->
+<div class="stuStep" data-step="4">
+  <p class="lede" style="font-size:16px">Same shape as step 1, aimed at what the first 64
+  <em>missed</em>. The audit below is the honest account of where the canon is thin.</p>
+  <div id="stuGapOut" class="auditBox"></div>
+  <div class="stuRow"><label for="stuExpand">Expansion direction</label>
+    <textarea id="stuExpand" placeholder="push fragments and negative space · add colony and metamorphosis families · more asymmetry"></textarea></div>
+  <div class="stuBar">
+    <button class="mini" id="stuBack4">&larr; back to the 64</button>
+    <button class="stuBtn" id="stuGo4">GENERATE 16 PROTOTYPES</button>
+  </div>
+  <div id="stuMsg4" class="stuMsg"></div>
+</div>
+
+<!-- ── STEP 5 ─────────────────────────────────────────────── -->
+<div class="stuStep" data-step="5">
+  <p class="lede" style="font-size:16px">Sixteen this time, and again <b>every one needs a
+  verdict</b>. Sixteen is deliberately tedious &mdash; it is the last cheap moment before
+  192 more marks are committed to these decisions.</p>
+  <div id="stuJudge5" class="judgeGrid"></div>
+  <div class="stuRow" style="margin-top:14px"><label for="stuNotes5">Overall direction for the remaining 192</label>
+    <textarea id="stuNotes5" placeholder="what the 16 taught you"></textarea></div>
+  <div class="stuBar">
+    <button class="mini" id="stuBack5">&larr; change the expansion seed</button>
+    <button class="stuBtn" id="stuGo5">APPROVE &amp; DRAW TO 256</button>
+    <span id="stuJudgeCount5" style="font-family:var(--mono);font-size:11px;color:var(--ink2)"></span>
+  </div>
+  <div id="stuMsg5" class="stuMsg"></div>
+</div>
+
+
+
+  <div class="note">
+    <b>Why it asks for your own API key.</b> This is a static page with no server behind
+    it. A shared key would sit in the JavaScript where anyone could read it and spend it.
+    So it uses yours, in your tab — never stored, never sent anywhere except straight to
+    Anthropic. Press <b>tile a demo canon</b> to try the renderer with no key at all.<br><br>
+    <b>To make it keyless for visitors</b>, deploy <code>worker/worker.js</code> — a
+    Cloudflare Worker holding the key as a secret behind rate limiting and a spend cap —
+    and set <code>CC_STUDIO_ENDPOINT</code> to its URL. That is the only change required.
+  </div>
+</main>
+
+<footer>
+  Wallpaper Studio · <a href="https://christmascherry.com/">christmascherry.com</a> ·
+  <a href="MANUAL.md">manual</a> · <a href="CANON_KIT.md">canon kit</a> ·
+  <a href="WALLPAPER_SPEC.md">renderer spec</a><br>
+  No analytics, no cookies, no server. Your key never leaves this tab.
+</footer>
+
+<script>
+/* ── CC-STU-001 · Wallpaper Studio ──────────────────────────────────────
+   Three steps to 64: seed, judge four, draw. Two more to 256: reseed
+   against the gaps, judge sixteen. The judging steps are the point — a
+   wrong register is cheap to fix across 4 marks and expensive across 64.
+
+   ENDPOINT: null = bring-your-own-key, called straight from the browser.
+   Point it at a Worker holding the key as a secret to go keyless. Never
+   put a shared key in this file; it is a public static page.           */
+var CC_STUDIO_ENDPOINT = null;
+
+(function(){
+  var $=function(i){ return document.getElementById(i); };
+  if(!$('stuGo1')) return;
+
+  var PALETTES={
+    cabinet:{n:'Cabinet',c:['#2E2A22','#C9A227','#4E6B4A','#6E7A82','#7A2E1E'],g:'#F6F3EA'},
+    jazz:{n:'Jazz',c:['#1A1A2E','#0FBFB0','#9B4FA8','#E0409A','#F5C518'],g:'#F6F5F1'},
+    clinic:{n:'Clinic',c:['#2A4561','#B58E47','#5A7860','#506876','#6B2530'],g:'#FAF9F6'},
+    bed:{n:'Red Beds',c:['#3A3128','#B07C3A','#5C6B54','#7C7266','#6B2A22'],g:'#F4EFE4'},
+    ink:{n:'Ink',c:['#14141A','#4A4A55','#8A8A96','#B8B8C2','#14141A'],g:'#FBFBF9'},
+    reef:{n:'Reef',c:['#123B4A','#31A6A0','#E2725B','#F2C14E','#7A4E7E'],g:'#F3F7F6'}
+  };
+  var palKey='jazz', MARKS=[], PROTO=[], seed=1994, step=1, ext=false;
+
+  (function(){
+    var w=$('stuPal');
+    Object.keys(PALETTES).forEach(function(k){
+      var p=PALETTES[k], b=document.createElement('button');
+      b.className='pchip'+(k===palKey?' on':''); b.dataset.k=k;
+      b.innerHTML=p.c.slice(0,4).map(function(c){return '<i style="background:'+c+'"></i>';}).join('')+p.n;
+      b.addEventListener('click',function(){
+        palKey=k; w.querySelectorAll('.pchip').forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on'); if(MARKS.length) paint();
+      });
+      w.appendChild(b);
+    });
+  })();
+
+  function go(n){
+    step=n;
+    document.querySelectorAll('.stuStep').forEach(function(d){ d.classList.toggle('on', +d.dataset.step===n); });
+    document.querySelectorAll('#stuSteps li').forEach(function(li){
+      var v=+li.dataset.s;
+      li.classList.toggle('on', v===n);
+      li.classList.toggle('done', v<n);
+      if(li.classList.contains('ext')) li.classList.toggle('live', ext);
+    });
+    var el=$('stuSteps'); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function msg(id,t,c){ var m=$(id); if(m){ m.textContent=t; m.style.color=c||'var(--ink2)'; } }
+
+  function mulberry(a){ return function(){ a|=0;a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  function tile(marks){
+    var reg=$('stuRegister').value, CELL=+$('stuDensity').value;
+    var COLS=Math.max(6,Math.round(1160/CELL)), ROWS=COLS, TILE=CELL*COLS;
+    var MARK=Math.round(CELL*(reg==='bold'?0.69:0.55)), SCALE=MARK/64, PAD=(CELL-MARK)/2;
+    var JIT=Math.round(CELL*0.16), ROT=reg==='bold'?24:20;
+    var OP=reg==='bold'?[0.90,1.0]:[0.55,1.0], rnd=mulberry(seed);
+    var defs=marks.map(function(m,i){return '<g id="stu-m'+i+'">'+m.svg+'</g>';}).join('');
+    var order=marks.map(function(_,i){return i;}), cells=[];
+    while(cells.length<COLS*ROWS){
+      for(var q=order.length-1;q>0;q--){var r=Math.floor(rnd()*(q+1)),t=order[q];order[q]=order[r];order[r]=t;}
+      cells=cells.concat(order);
+    }
+    cells=cells.slice(0,COLS*ROWS);
+    var uses=[],idx=0;
+    for(var row=0;row<ROWS;row++){
+      var xoff=(row%2)?CELL/2:0;
+      for(var col=0;col<COLS;col++){
+        var mi=cells[idx++], cx=col*CELL+xoff, cy=row*CELL;
+        var jx=(rnd()*2-1)*JIT, jy=(rnd()*2-1)*JIT, rot=(rnd()*2-1)*ROT;
+        var sc=SCALE*(0.75+rnd()*0.5), op=OP[0]+rnd()*(OP[1]-OP[0]);
+        (function(mi,cy,jy,rot,sc,op,cx,col,row){
+          function emit(tx){ return '<use href="#stu-m'+mi+'" opacity="'+op.toFixed(2)+
+            '" transform="translate('+tx.toFixed(1)+','+(cy+PAD+jy).toFixed(1)+') scale('+
+            sc.toFixed(3)+') rotate('+rot.toFixed(1)+',32,32)"/>'; }
+          uses.push(emit(cx+PAD+jx));
+          if(row%2 && col===COLS-1) uses.push(emit(cx+PAD+jx-TILE));   /* seam */
+        })(mi,cy,jy,rot,sc,op,cx,col,row);
+      }
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" '+
+      'fill="none" stroke-linecap="round" stroke-linejoin="round"><defs>'+defs+
+      '<pattern id="stu-pat" width="'+TILE+'" height="'+TILE+'" patternUnits="userSpaceOnUse">'+
+      uses.join('')+'</pattern></defs><rect width="100%" height="100%" fill="url(#stu-pat)"/></svg>';
+  }
+
+  function paint(){
+    if(!MARKS.length) return;
+    var svg=tile(MARKS), g=PALETTES[palKey].g, o=(+$('stuStrength').value/100);
+    [['stuStage','stuStats'],['stuStage3','stuStats3']].forEach(function(p){
+      var st=$(p[0]); if(!st) return;
+      st.style.background=g;
+      st.innerHTML='<div style="position:absolute;inset:0;opacity:'+o+'">'+svg+'</div>';
+      var s2=$(p[1]); if(s2) s2.textContent=MARKS.length+' marks · seed '+seed+' · '+(svg.length/1024).toFixed(0)+' KB';
+    });
+    var sh=$('stuSheet3');
+    if(sh){ sh.innerHTML=''; MARKS.forEach(function(m){
+      var f=document.createElement('figure');
+      f.innerHTML='<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round">'+m.svg+'</svg>';
+      sh.appendChild(f); }); }
+    window.__ccStudioSVG=svg;
+  }
+
+  function parseMarks(t){
+    var out=[],re=/<svg\b[^>]*>([\s\S]*?)<\/svg>/gi,m;
+    while((m=re.exec(t))){
+      var inner=m[1];
+      var nm=(inner.match(/<!--\s*(?:\d+\s*[·.\-]\s*)?([^—\-–\n]{2,40})/)||[])[1];
+      inner=inner.replace(/<!--[\s\S]*?-->/g,'').trim();
+      if(inner) out.push({svg:inner,name:(nm||'').trim()});
+    }
+    return out;
+  }
+
+  function baseBrief(n){
+    var reg=$('stuRegister').value, p=PALETTES[palKey], bold=reg==='bold';
+    var subj=$('stuSubject').value.trim()||'shapes', mood=$('stuMood').value.trim();
+    return 'Draw '+n+' tiling wallpaper marks. Subject: '+subj+'.'+(mood?' Direction: '+mood+'.':'')+
+      '\n\nREGISTER: '+(bold?'BOLD':'GHOST')+'.'+(bold
+        ?' Stroke-width 3-5 primary, solid fills allowed, up to 3 colours per mark. Variety comes from COLOUR — do not layer opacity.'
+        :' Stroke-width 1.0-1.3 primary, 0.7-0.8 secondary, 0.4-0.6 ghost. Almost no solid fill, max 2 colours. Variety comes from LAYERED OPACITY in three bands: .30-.55 primary, .16-.29 secondary, .05-.15 ghost.')+
+      '\n\nPALETTE (only these): primary '+p.c[0]+' in every mark; accent '+p.c[1]+
+      ' ~40% as a SINGLE point; '+p.c[2]+' ~8%; '+p.c[3]+' ~5%; '+p.c[4]+' ~3%, rare and earned. Ground '+p.g+' is never drawn.'+
+      '\n\nFORM: 64x64 viewBox, fill="none" root, round caps/joins. Target '+(bold?'2.6':'3.3')+
+      ' elements per mark. Across the batch: circle ~30%, path ~20%, line ~20%, rect ~15%, polygon ~10%. '+
+      'Mean span ~42-47 of 64; 50-65% visibly off-centre.'+
+      '\n\nEIGHT FORMAL STRATEGIES, spread evenly: single gesture · radial · nested · repeated unit · '+
+      'solid mass · pure outline · fragment/cropped · negative space. The last two get skipped and are what make a canon feel intelligent.'+
+      '\n\nCONCEPT: one gesture per mark, one idea, restrained. Nothing literally depicted. Must read at 24px '+
+      'and sit beside neighbours WITHOUT matching them. Draw the subject\'s visual GRAMMAR, not objects from it.'+
+      '\n\nHARD RULES: no generator, no loop, no parametric function — each mark conceived individually. '+
+      'No two marks may be rotations, reflections or recolours of each other.'+
+      '\n\nOUTPUT: exactly '+n+' <svg> elements and NOTHING else. No prose, no fences.\n'+
+      '<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><!-- Name --> ... </svg>';
+  }
+
+  function feedbackBlock(cards,notes){
+    var keep=cards.filter(function(c){return c.v==='keep';}),
+        cut =cards.filter(function(c){return c.v==='cut';});
+    var t='\n\n── REVIEWED PROTOTYPES ──\nA human judged these. Treat it as binding.\n';
+    if(keep.length){
+      t+='\nAPPROVED — match this character. Source follows:\n';
+      keep.forEach(function(c){
+        t+='\n<svg viewBox="0 0 64 64">'+c.m.svg+'</svg>'+(c.t?'\n  note: '+c.t:'')+'\n';
+      });
+    }
+    if(cut.length){
+      t+='\nREJECTED — do not draw more like these:\n';
+      cut.forEach(function(c){ t+='  · '+(c.m.name||'unnamed')+(c.t?' — '+c.t:'')+'\n'; });
+    }
+    if(notes) t+='\nOVERALL DIRECTION (highest priority):\n'+notes+'\n';
+    return t;
+  }
+
+  async function ask(prompt,maxTok){
+    var key=$('stuKey').value.trim();
+    if(!CC_STUDIO_ENDPOINT && !key.startsWith('sk-ant-')) throw new Error('needs an Anthropic key (sk-ant-…)');
+    var url=CC_STUDIO_ENDPOINT||'https://api.anthropic.com/v1/messages';
+    var h={'content-type':'application/json'};
+    if(!CC_STUDIO_ENDPOINT){ h['x-api-key']=key; h['anthropic-version']='2023-06-01';
+      h['anthropic-dangerous-direct-browser-access']='true'; }
+    var r=await fetch(url,{method:'POST',headers:h,body:JSON.stringify({
+      model:'claude-sonnet-5',max_tokens:maxTok||16000,messages:[{role:'user',content:prompt}]})});
+    if(!r.ok) throw new Error('HTTP '+r.status+' — '+(await r.text()).slice(0,200));
+    var d=await r.json();
+    return (d.content||[]).map(function(b){return b.text||'';}).join('\n');
+  }
+
+  /* batched so one bad response does not lose the run */
+  async function drawMany(total,extra,msgId){
+    var got=[],B=16;
+    for(var done=0; done<total; done+=B){
+      var n=Math.min(B,total-done);
+      msg(msgId,'■ drawing '+(done+1)+'–'+(done+n)+' of '+total+'…');
+      var p=baseBrief(n)+extra+
+        (got.length?'\n\nALREADY DRAWN (do not repeat these ideas): '+
+          got.map(function(g){return g.name||'—';}).filter(Boolean).join(', '):'');
+      try{ got=got.concat(parseMarks(await ask(p))); }
+      catch(e){ msg(msgId,'■ batch failed: '+e.message+' — keeping '+got.length,'#a33'); break; }
+    }
+    return got;
+  }
+
+  function judgeCards(marks,gridId,countId){
+    var g=$(gridId); g.innerHTML='';
+    var cards=marks.map(function(m,i){
+      var d=document.createElement('div'); d.className='jCard';
+      d.innerHTML='<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round">'+m.svg+'</svg>'+
+        '<div class="jn">'+(m.name||('prototype '+(i+1)))+'</div>'+
+        '<div class="jb"><button data-v="keep">keep</button><button data-v="cut">cut</button></div>'+
+        '<textarea placeholder="what works, or what is wrong"></textarea>';
+      var rec={m:m,v:null,t:''};
+      d.querySelectorAll('.jb button').forEach(function(b){
+        b.addEventListener('click',function(){
+          rec.v=b.dataset.v;
+          d.querySelectorAll('.jb button').forEach(function(x){x.classList.remove('on');});
+          b.classList.add('on');
+          d.classList.remove('keep','cut'); d.classList.add(rec.v);
+          tally();
+        });
+      });
+      d.querySelector('textarea').addEventListener('input',function(){ rec.t=this.value.trim(); });
+      g.appendChild(d); return rec;
+    });
+    function tally(){
+      var n=cards.filter(function(c){return c.v;}).length;
+      $(countId).textContent=n+' of '+cards.length+' judged';
+      $(countId).style.color = n===cards.length ? '#2a7a2a' : 'var(--ink2)';
+    }
+    tally(); return cards;
+  }
+
+  function auditText(marks){
+    var E={},cols={},sum=0,spans=[],off=0;
+    marks.forEach(function(m){
+      (m.svg.match(/<(circle|ellipse|line|path|polygon|polyline|rect)\b/g)||[]).forEach(function(t){
+        t=t.slice(1); E[t]=(E[t]||0)+1; sum++; });
+      (m.svg.match(/#[0-9A-Fa-f]{6}/g)||[]).forEach(function(c){ c=c.toUpperCase(); cols[c]=(cols[c]||0)+1; });
+      var ns=(m.svg.match(/-?\d+\.?\d*/g)||[]).map(Number).filter(function(v){return v>=-20&&v<=84;});
+      if(ns.length){ spans.push(Math.max.apply(null,ns)-Math.min.apply(null,ns));
+        var cx=ns.filter(function(_,i){return i%2===0;});
+        var mx=cx.reduce(function(a,b){return a+b;},0)/cx.length;
+        if(Math.abs(mx-32)>7) off++; }
+    });
+    var per=(sum/marks.length).toFixed(1);
+    var t='CANON AUDIT — '+marks.length+' marks\n\nelements/mark  '+per+
+      '   (target '+($('stuRegister').value==='bold'?'2.2–2.8':'3.0–3.6')+')\n\nelement mix\n';
+    Object.keys(E).sort(function(a,b){return E[b]-E[a];}).forEach(function(k){
+      var f=E[k]/sum; t+='  '+k.padEnd(9)+'█'.repeat(Math.round(f*24)).padEnd(24,'·')+' '+(f*100).toFixed(1)+'%\n'; });
+    t+='\nmean span      '+(spans.reduce(function(a,b){return a+b;},0)/spans.length).toFixed(0)+' of 64   (target 42–47)';
+    t+='\noff-centre     '+Math.round(off/marks.length*100)+'%   (target 50–65%)';
+    t+='\ncolours used   '+Object.keys(cols).length;
+    return t;
+  }
+
+  /* ── wiring ─────────────────────────────────────────────── */
+  $('stuGo1').addEventListener('click',async function(){
+    $('stuGo1').disabled=true;
+    msg('stuMsg1','■ Claude is drawing 4 prototypes…');
+    try{
+      PROTO=parseMarks(await ask(baseBrief(4),4000));
+      if(!PROTO.length) throw new Error('nothing came back — try again');
+      window.__judge=judgeCards(PROTO,'stuJudge','stuJudgeCount');
+      MARKS=PROTO; seed=Math.floor(Math.random()*99999); paint();
+      msg('stuMsg1',''); go(2);
+    }catch(e){ msg('stuMsg1','■ '+e.message,'#a33'); }
+    finally{ $('stuGo1').disabled=false; }
+  });
+
+  $('stuGo2').addEventListener('click',async function(){
+    var cards=window.__judge||[];
+    if(cards.some(function(c){return !c.v;}))
+      return msg('stuMsg2','■ judge all four first — keep or cut on each.','#a33');
+    if(!cards.some(function(c){return c.v==='keep';}))
+      return msg('stuMsg2','■ all four cut. Go back and reseed rather than drawing 64 of something you rejected.','#a33');
+    $('stuGo2').disabled=true; go(3);
+    try{
+      var fb=feedbackBlock(cards,$('stuNotes').value.trim());
+      var got=await drawMany(64,fb,'stuMsg3');
+      var keep=cards.filter(function(c){return c.v==='keep';}).map(function(c){return c.m;});
+      MARKS=keep.concat(got); seed=Math.floor(Math.random()*99999); paint();
+      msg('stuMsg3','■ '+MARKS.length+' marks. Audit it, or expand to 256.','#2a7a2a');
+    }catch(e){ msg('stuMsg3','■ '+e.message,'#a33'); }
+    finally{ $('stuGo2').disabled=false; }
+  });
+
+  $('stuAudit').addEventListener('click',function(){
+    if(!MARKS.length) return;
+    var b=$('stuAuditOut'); b.textContent=auditText(MARKS); b.classList.add('on');
+  });
+  $('stuGo3').addEventListener('click',function(){
+    ext=true;
+    var b=$('stuGapOut'); b.textContent=auditText(MARKS); b.classList.add('on');
+    go(4);
+  });
+  $('stuGo4').addEventListener('click',async function(){
+    $('stuGo4').disabled=true;
+    msg('stuMsg4','■ drawing 16 prototypes against the gaps…');
+    try{
+      var p=baseBrief(16)+'\n\nThis is an EXPANSION of an existing '+MARKS.length+
+        '-mark canon. Do not repeat what is there. Expansion direction: '+
+        ($('stuExpand').value.trim()||'cover what the audit shows is thin')+
+        '\n\nAudit of the existing canon:\n'+auditText(MARKS);
+      var got=parseMarks(await ask(p,9000));
+      if(!got.length) throw new Error('nothing came back');
+      window.__judge5=judgeCards(got,'stuJudge5','stuJudgeCount5');
+      msg('stuMsg4',''); go(5);
+    }catch(e){ msg('stuMsg4','■ '+e.message,'#a33'); }
+    finally{ $('stuGo4').disabled=false; }
+  });
+  $('stuGo5').addEventListener('click',async function(){
+    var cards=window.__judge5||[];
+    if(cards.some(function(c){return !c.v;}))
+      return msg('stuMsg5','■ all sixteen need a verdict. That is the step.','#a33');
+    $('stuGo5').disabled=true; go(3);
+    try{
+      var fb=feedbackBlock(cards,$('stuNotes5').value.trim());
+      var keep=cards.filter(function(c){return c.v==='keep';}).map(function(c){return c.m;});
+      var need=Math.max(0,256-MARKS.length-keep.length);
+      var got=await drawMany(need,fb,'stuMsg3');
+      MARKS=MARKS.concat(keep,got); seed=Math.floor(Math.random()*99999); paint();
+      msg('stuMsg3','■ '+MARKS.length+' marks.','#2a7a2a');
+    }catch(e){ msg('stuMsg3','■ '+e.message,'#a33'); }
+    finally{ $('stuGo5').disabled=false; }
+  });
+
+  $('stuBack2').addEventListener('click',function(){ go(1); });
+  $('stuBack3').addEventListener('click',function(){ go(2); });
+  $('stuBack4').addEventListener('click',function(){ go(3); });
+  $('stuBack5').addEventListener('click',function(){ go(4); });
+
+  var DEMO_CANON=[
+    '<path d="M6,32 C14,16 22,48 30,32 C38,16 46,48 54,32" stroke="#0FBFB0" stroke-width="5"/>',
+    '<polygon points="32,10 56,52 8,52" fill="#E0409A"/>',
+    '<circle cx="16" cy="38" r="7" fill="#0FBFB0"/><circle cx="32" cy="24" r="7" fill="#E0409A"/><circle cx="48" cy="38" r="7" fill="#9B4FA8"/>',
+    '<polyline points="6,42 18,22 30,42 42,22 54,42" fill="none" stroke="#1A1A2E" stroke-width="5.5"/>',
+    '<rect x="8" y="8" width="24" height="24" fill="#1A1A2E"/><rect x="32" y="32" width="24" height="24" fill="#1A1A2E"/><rect x="32" y="8" width="24" height="24" fill="#0FBFB0"/><rect x="8" y="32" width="24" height="24" fill="#0FBFB0"/>',
+    '<polygon points="32,2 38,22 58,16 44,32 58,48 38,42 32,62 26,42 6,48 20,32 6,16 26,22" fill="#D03B3B"/>',
+    '<circle cx="32" cy="32" r="24" fill="none" stroke="#1A1A2E" stroke-width="4"/><circle cx="32" cy="32" r="15" fill="none" stroke="#0FBFB0" stroke-width="4"/><circle cx="32" cy="32" r="6" fill="#D03B3B"/>',
+    '<path d="M50,12 C50,6 18,8 18,24 C18,38 46,32 46,46 C46,58 18,56 18,46" fill="none" stroke="#9B4FA8" stroke-width="5"/>',
+    '<line x1="12" y1="12" x2="52" y2="52" stroke="#D03B3B" stroke-width="7"/><line x1="52" y1="12" x2="12" y2="52" stroke="#D03B3B" stroke-width="7"/>',
+    '<path d="M32,6 C34,24 40,30 58,32 C40,34 34,40 32,58 C30,40 24,34 6,32 C24,30 30,24 32,6" fill="#F5C518"/>',
+    '<polyline points="10,34 26,50 54,12" fill="none" stroke="#0FBFB0" stroke-width="8"/>',
+    '<rect x="8" y="22" width="48" height="20" rx="10" fill="#E0409A"/>'
+  ];
+  function demo(){
+    var out=DEMO_CANON.map(function(d,i){ return {svg:d,name:'demo '+(i+1)}; });
+    if(!out.length) return msg('stuMsg1','■ demo canon missing.','#a33');
+    MARKS=out; palKey='jazz';
+    $('stuPal').querySelectorAll('.pchip').forEach(function(x){x.classList.toggle('on',x.dataset.k==='jazz');});
+    seed=Math.floor(Math.random()*99999); paint();
+    msg('stuMsg1','■ Tiling a built-in demo canon of '+out.length+' marks. No key used.');
+  }
+  $('stuDemo').addEventListener('click',demo);
+  ['stuReseed','stuReseed3'].forEach(function(id){ var b=$(id); if(b) b.addEventListener('click',function(){
+    if(!MARKS.length) return demo(); seed=Math.floor(Math.random()*99999); paint(); }); });
+  ['stuDensity','stuStrength','stuRegister'].forEach(function(id){
+    $(id).addEventListener('input',function(){ if(MARKS.length) paint(); }); });
+  $('stuDensity').addEventListener('input',function(){ $('stuDensityOut').textContent=this.value; });
+  $('stuStrength').addEventListener('input',function(){ $('stuStrengthOut').textContent=(+this.value/100).toFixed(2); });
+
+  function dl(){ if(!window.__ccStudioSVG) return;
+    var b=new Blob([window.__ccStudioSVG],{type:'image/svg+xml'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=($('stuSubject').value||'wallpaper').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+seed+'.svg';
+    a.click(); URL.revokeObjectURL(a.href); }
+  function cp(){ if(!window.__ccStudioSVG) return;
+    var css='.wallpaper{\n  background-color: '+PALETTES[palKey].g+';\n  background-image: url("data:image/svg+xml,'+
+      encodeURIComponent(window.__ccStudioSVG).replace(/'/g,'%27')+'");\n}';
+    var t=document.createElement('textarea'); t.value=css; document.body.appendChild(t); t.select();
+    try{ document.execCommand('copy'); }catch(e){} document.body.removeChild(t); }
+  ['stuSvg','stuSvg3'].forEach(function(id){ var b=$(id); if(b) b.addEventListener('click',dl); });
+  ['stuCss','stuCss3'].forEach(function(id){ var b=$(id); if(b) b.addEventListener('click',cp); });
+
+  go(1);
+})();
+</script>
+</body></html>

@@ -1,0 +1,66 @@
+{
+  "name": "originalmd \u2014 the hairline canon",
+  "marks_dir": "../ninetiesglyphs/marks-hairline",
+  "out": "out/originalmd.svg",
+  "id_prefix": "omd-m",
+  "class": "wp",
+  "seed": 42,
+  "register": "ghost",
+  "grid": {
+    "cell": 48,
+    "cols": 27,
+    "rows": 27,
+    "mark": 24
+  },
+  "jitter": {
+    "px": 8,
+    "rotate": [
+      -20,
+      20
+    ],
+    "scale": [
+      0.75,
+      1.25
+    ],
+    "opacity": [
+      0.55,
+      1.0
+    ]
+  },
+  "palette": {
+    "ink": "#2A4561",
+    "accent": "#B58E47",
+    "second": "#5A7860",
+    "third": "#506876",
+    "gravity": "#6B2530",
+    "highlight": "#B58E47",
+    "ground": "#FAF9F6"
+  },
+  "tints": null,
+  "style": {
+    "stroke_primary": [
+      1.0,
+      1.3
+    ],
+    "stroke_secondary": [
+      0.7,
+      0.8
+    ],
+    "opacity_bands": [
+      [
+        0.3,
+        0.55
+      ],
+      [
+        0.16,
+        0.29
+      ],
+      [
+        0.05,
+        0.15
+      ]
+    ],
+    "fills": "none",
+    "max_colors_per_mark": 2
+  }
+}
