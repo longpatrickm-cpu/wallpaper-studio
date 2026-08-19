@@ -1,24 +1,35 @@
 # Keyless mode
 
-Optional. Without it the Studio works fine — visitors bring their own key.
+Optional. Without it the Studio works fine — visitors bring their own key, and
+nothing in this directory needs to exist.
 
-**Deploying this means you pay for every generation on an open page.** The three
-guards in `worker.js` are the only thing between that and a bill: a per-IP hourly
-limit, a global daily cap, and a payload check so nobody can proxy arbitrary
-prompts through your key.
+**Deploying this means you pay for every request on an open page.** Read
+[`DEPLOY.md`](DEPLOY.md) before you do — it covers the spend limit, the cost
+model, and both deploy paths.
 
-```bash
-cd worker
-wrangler kv namespace create RL      # paste the id into wrangler.toml
-wrangler secret put ANTHROPIC_API_KEY
-wrangler deploy
-```
+## The guards, and what they are not
 
-Then in `index.html`:
+`worker.js` has three: a per-IP hourly limit, a global daily cap, and a payload
+check so nobody can proxy arbitrary prompts through your key.
+
+⚠️ **The daily cap is not a hard cap.** Its KV counters are a non-atomic
+read-modify-write on an eventually-consistent store, so concurrent requests read
+the same value and a burst overshoots. The only ceiling that actually holds is a
+**spend limit on the Anthropic workspace the key belongs to**. Set that first
+(`DEPLOY.md`, step 1); treat these numbers as a courtesy brake on top of it.
+
+## Defaults
 
 ```js
-var CC_STUDIO_ENDPOINT = "https://wallpaper-studio.<you>.workers.dev";
+const DAILY_CAP   = 8;   // ~$2/day worst case  (~2–3 finished wallpapers)
+const PER_IP_HOUR = 3;   // one full 64-mark run per visitor per hour
+const MAX_TOKENS  = 16000;
 ```
 
-Set `ALLOWED_ORIGINS` to your domains, and tune `DAILY_CAP` to a number you would
-be relaxed about seeing on an invoice. Start it lower than you think.
+At Claude Sonnet 5 rates a worst-case request is ~$0.25 (~$0.17 during the
+introductory period through 2026-08-31). Raise `DAILY_CAP` only to a number you
+would be relaxed about seeing on an invoice, and raise the Anthropic workspace
+limit to match. Start lower than you think.
+
+Set `ALLOWED_ORIGINS` to your own domains — it is what stops someone else's page
+from spending your key.

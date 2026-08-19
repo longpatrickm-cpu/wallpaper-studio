@@ -2,19 +2,35 @@
  * Wallpaper Studio — keyless proxy.
  *
  * Holds the Anthropic key as a Worker secret so visitors do not need one.
- * Deploying this means YOU are paying for every generation, on an open page,
+ * Deploying this means YOU are paying for every request, on an open page,
  * so all three guards below are load-bearing. Do not remove them.
  *
+ * ⚠️ THE GUARDS BELOW ARE NOT A HARD CAP. The KV counters are a non-atomic
+ * read-modify-write on an eventually-consistent store: concurrent requests
+ * read the same value, so a burst overshoots DAILY_CAP. They bound casual
+ * traffic, not a determined one. The only real ceiling is a SPEND LIMIT on
+ * the Anthropic workspace the key belongs to. Set that first; treat these
+ * numbers as a courtesy brake on top of it.
+ *
+ * Cost model (Claude Sonnet 5, $3/$15 per MTok; $2/$10 intro to 2026-08-31):
+ *   worst-case request = 16k output + ~3k input ≈ $0.25  (≈$0.17 at intro)
+ *   DAILY_CAP 8  →  ~$2/day ceiling  →  ~$60/month if it maxed out daily
+ *   A complete 64-mark wallpaper is ~3 requests; 256 marks is ~5.
+ *
+ * Deploy (dashboard — no wrangler, no secret on any local machine):
+ *   see DEPLOY.md in this directory.
+ *
+ * Deploy (wrangler — needs a Workers-scoped API token, NOT the DNS one):
+ *   wrangler kv namespace create RL      → paste id into wrangler.toml
  *   wrangler secret put ANTHROPIC_API_KEY
- *   wrangler kv namespace create RL
  *   wrangler deploy
  *
  * Then in index.html:  var CC_STUDIO_ENDPOINT = "https://your-worker.workers.dev";
  */
 
 const ALLOWED_ORIGINS = ["https://christmascherry.com", "https://www.christmascherry.com"];
-const DAILY_CAP   = 300;   // total generations per day, all users
-const PER_IP_HOUR = 8;     // generations per IP per hour
+const DAILY_CAP   = 8;     // total requests per day, all users  (~$2/day worst case)
+const PER_IP_HOUR = 3;     // requests per IP per hour (one full 64-mark run)
 const MAX_TOKENS  = 16000;
 
 export default {
