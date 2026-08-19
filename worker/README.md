@@ -21,13 +21,13 @@ the same value and a burst overshoots. The only ceiling that actually holds is a
 ## Defaults
 
 ```js
-const DAILY_CAP   = 8;   // ~$2/day worst case  (~2–3 finished wallpapers)
+const DAILY_CAP   = 8;   // ~$1.40/day worst case  (~2–3 finished wallpapers)
 const PER_IP_HOUR = 3;   // one full 64-mark run per visitor per hour
 const MAX_TOKENS  = 16000;
 ```
 
-At Claude Sonnet 5 rates a worst-case request is ~$0.25 (~$0.17 during the
-introductory period through 2026-08-31). Raise `DAILY_CAP` only to a number you
+At Claude Sonnet 5 rates ($2/$10 per MTok — the announced Sept-2026 increase
+was cancelled) a worst-case request is ~$0.17. Raise `DAILY_CAP` only to a number you
 would be relaxed about seeing on an invoice, and raise the Anthropic workspace
 limit to match. Start lower than you think.
 

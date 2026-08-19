@@ -12,9 +12,10 @@
  * the Anthropic workspace the key belongs to. Set that first; treat these
  * numbers as a courtesy brake on top of it.
  *
- * Cost model (Claude Sonnet 5, $3/$15 per MTok; $2/$10 intro to 2026-08-31):
- *   worst-case request = 16k output + ~3k input ≈ $0.25  (≈$0.17 at intro)
- *   DAILY_CAP 8  →  ~$2/day ceiling  →  ~$60/month if it maxed out daily
+ * Cost model (Claude Sonnet 5, $2/$10 per MTok — the announced Sept-2026
+ * increase to $3/$15 was cancelled; $2/$10 is the standard price):
+ *   worst-case request = 16k output + ~4k input ≈ $0.17
+ *   DAILY_CAP 8  →  ~$1.40/day ceiling  →  ~$42/month if it maxed out daily
  *   A complete 64-mark wallpaper is ~3 requests; 256 marks is ~5.
  *
  * Deploy (dashboard — no wrangler, no secret on any local machine):
@@ -29,7 +30,7 @@
  */
 
 const ALLOWED_ORIGINS = ["https://christmascherry.com", "https://www.christmascherry.com"];
-const DAILY_CAP   = 8;     // total requests per day, all users  (~$2/day worst case)
+const DAILY_CAP   = 8;     // total requests per day, all users  (~$1.40/day worst case)
 const PER_IP_HOUR = 3;     // requests per IP per hour (one full 64-mark run)
 const MAX_TOKENS  = 16000;
 
